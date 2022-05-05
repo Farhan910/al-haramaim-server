@@ -33,6 +33,7 @@ async function run() {
         const product = req.body;
         productsCollection.insertOne(product);
         res.send(product);
+        <h2></h2>
 
        
       });
