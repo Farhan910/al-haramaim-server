@@ -23,7 +23,7 @@ async function run() {
       .collection("product");
 
     app.get("/product", async (req, res) => {
-      const query = {};
+      const query = {}
       const cursor = productsCollection.find(query);
       const products = await cursor.toArray();
 
