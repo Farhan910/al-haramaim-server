@@ -9,6 +9,22 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+function verifyJWT(req, res, next) {
+  const tokenInfo = req.headers["authorization"];
+
+  if (tokenInfo) {
+    const token = tokenInfo.split(" ")[1];
+    jwt.verify(token,process.env.SECRET_KEY, (err, decoded) => {
+      if (err) {
+        return res.status(403).send({ message: "forbidden access" });
+      } else {
+        req.decoded = decoded;
+        next();
+      }
+    });
+  }
+}
+
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.gmlum.mongodb.net/myFirstDatabase?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, {
   useNewUrlParser: true,
@@ -31,28 +47,32 @@ async function run() {
       res.send(products);
     });
 
-    app.get("/myitem", async (req, res) => {
-        const email = req.query.email;
-        const query = {email: email};
-        const cursor = productsCollection.find(query);
-        const products = await cursor.toArray();
-    
-        res.send(products);
-    }),
-
-    
-    app.delete("/product/:id",async (req, res) => {
-        const id = req.params.id;
-        const query = {_id:ObjectId(id)};
-        const result = await productsCollection.deleteOne(query);
-        res.send(result);
-    });
-    app.post("/login",(req, res) =>{
-
-        const email =req.body.email;
-        const token = jw.sign(email, token);
+    app.post('/login', (req, res) => {
+        const email = req.body;
+        const token = jwt.sign(email, process.env.SECRET_KEY)
+        res.send({ token });
     })
 
+   
+
+    app.get("/myitem", verifyJWT,  async (req, res) => {
+      const email = req.query.email;
+      const query = { email: email };
+      const cursor = productsCollection.find(query);
+      const products = await cursor.toArray();
+
+      res.send(products);
+    }),
+      app.delete("/product/:id", async (req, res) => {
+        const id = req.params.id;
+        const query = { _id: ObjectId(id) };
+        const result = await productsCollection.deleteOne(query);
+        res.send(result);
+      });
+    app.post("/login", (req, res) => {
+      const email = req.body.email;
+      const token = jw.sign(email, token);
+    });
 
     app.post("/product", (req, res) => {
       const product = req.body;
@@ -74,7 +94,7 @@ async function run() {
           mainDescription: updatedProduct.mainDescription,
           mainDescription: updatedProduct.mainDescription,
           quantity: updatedProduct.quantity,
-          
+
           image: updatedProduct.image,
           serviceProvider: updatedProduct.serviceProvider,
         },
